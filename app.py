@@ -59,12 +59,19 @@ if st.button("Genera Token"):
                 original = decode_base64_image(rep_data["originalImageBase64"])
                 puzzle = decode_base64_image(rep_data["jigsawImageBase64"])
 
-                # TROVA POSIZIONE
+                # === 2. Trova posizione ===
                 bg_gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
                 piece_gray = cv2.cvtColor(puzzle, cv2.COLOR_BGR2GRAY)
-                _, _, _, max_loc = cv2.minMaxLoc(cv2.matchTemplate(bg_gray, piece_gray, cv2.TM_CCOEFF_NORMED))
+
+                # Fallback: swap se dimensioni non corrette
+                if piece_gray.shape[0] > bg_gray.shape[0] or piece_gray.shape[1] > bg_gray.shape[1]:
+                    bg_gray, piece_gray = piece_gray, bg_gray
+
+                res = cv2.matchTemplate(bg_gray, piece_gray, cv2.TM_CCOEFF_NORMED)
+                _, _, _, max_loc = cv2.minMaxLoc(res)
                 x = float(max_loc[0])
                 y = 5
+                
 
                 # CAPTCHA CHECK
                 point_json = encrypt_point_json(x, y, secret_key)
