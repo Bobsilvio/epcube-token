@@ -12,7 +12,7 @@ import time
 import uuid
 
 st.set_page_config(page_title="EpCube Token Generator", page_icon="🔐")
-
+st.caption("The site does not save credentials, you can find the open source code on github")
 st.title("🔐 Genera Bearer Token per EpCube")
 st.markdown("Enter the email and password you use to log in via the APP (if it gives an error, try again until successful)")
 
