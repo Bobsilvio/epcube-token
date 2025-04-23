@@ -14,6 +14,7 @@ import uuid
 st.set_page_config(page_title="EpCube Token Generator", page_icon="🔐")
 
 st.title("🔐 Genera Bearer Token per EpCube")
+st.markdown("Enter the email and password you use to log in via the APP (if it gives an error, try again until successful)")
 
 email = st.text_input("Email", value="", placeholder="Inserisci la tua email")
 password = st.text_input("Password", type="password", placeholder="Inserisci la tua password")
