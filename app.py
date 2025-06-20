@@ -12,19 +12,36 @@ import time
 import uuid
 
 st.set_page_config(page_title="EpCube Token Generator", page_icon="🔐")
-st.caption("The site does not save credentials, you can find the open source code on github")
-st.title("🔐 Genera Bearer Token per EpCube")
-st.markdown("Enter the email and password you use to log in via the APP (if it gives an error, try again until successful)")
+st.caption("⚠️ This site does not store your credentials. Full source code is available on GitHub.")
 
-email = st.text_input("Email", value="", placeholder="Inserisci la tua email")
-password = st.text_input("Password", type="password", placeholder="Inserisci la tua password")
+st.title("🔐 EpCube Token Generator")
 
-if st.button("Genera Token"):
+st.markdown("""
+**🇮🇹 Istruzioni**  
+Inserisci l'email e la password che usi per accedere all'app EpCube.  
+Se il login fallisce, riprova: il CAPTCHA può non riuscire al primo tentativo.
+
+**🇬🇧 Instructions**  
+Enter the email and password you use to log into the EpCube mobile app.  
+If login fails, try again: CAPTCHA may fail on first attempt.
+""")
+
+region = st.selectbox("🌍 Regione / Region", options=["EU", "US"], index=0)
+email = st.text_input("📧 Email", value="", placeholder="es. nome@email.com")
+password = st.text_input("🔒 Password", type="password", placeholder="Inserisci la password / Enter password")
+
+if st.button("🔐 Genera Token / Generate Token"):
     if not email or not password:
-        st.error("Inserisci email e password")
+        st.error("❗ Inserisci email e password / Please enter both email and password.")
     else:
         try:
-            with st.spinner("🧩 Risolvo CAPTCHA..."):
+            BASE_URLS = {
+                "EU": "https://monitoring-eu.epcube.com",
+                "US": "https://monitoring-us.epcube.com"
+            }
+            BASE_URL = BASE_URLS[region]
+
+            with st.spinner("🧩 Solving CAPTCHA..."):
                 start_time = time.perf_counter()
                 client_uid = str(uuid.uuid4())
 
@@ -52,7 +69,7 @@ if st.button("Genera Token"):
                     return base64.b64encode(cipher.encrypt(pad(raw, AES.block_size))).decode("utf-8")
 
                 # CAPTCHA GET
-                r = requests.post("https://monitoring-eu.epcube.com/api/open/common/captcha/get",
+                r = requests.post(f"{BASE_URL}/api/open/common/captcha/get",
                                   json={"clientUid": client_uid}, headers=headers)
                 rep_data = r.json()["data"]["repData"]
                 captcha_token = rep_data["token"]
@@ -60,11 +77,10 @@ if st.button("Genera Token"):
                 original = decode_base64_image(rep_data["originalImageBase64"])
                 puzzle = decode_base64_image(rep_data["jigsawImageBase64"])
 
-                # === 2. Trova posizione ===
+                # Trova posizione pezzo puzzle / Find puzzle position
                 bg_gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
                 piece_gray = cv2.cvtColor(puzzle, cv2.COLOR_BGR2GRAY)
 
-                # Fallback: swap se dimensioni non corrette
                 if piece_gray.shape[0] > bg_gray.shape[0] or piece_gray.shape[1] > bg_gray.shape[1]:
                     bg_gray, piece_gray = piece_gray, bg_gray
 
@@ -72,12 +88,11 @@ if st.button("Genera Token"):
                 _, _, _, max_loc = cv2.minMaxLoc(res)
                 x = float(max_loc[0])
                 y = 5
-                
 
                 # CAPTCHA CHECK
                 point_json = encrypt_point_json(x, y, secret_key)
                 check = requests.post(
-                    "https://monitoring-eu.epcube.com/api/open/common/captcha/check",
+                    f"{BASE_URL}/api/open/common/captcha/check",
                     json={"clientUid": client_uid, "token": captcha_token, "pointJson": point_json},
                     headers=headers
                 ).json()
@@ -85,7 +100,7 @@ if st.button("Genera Token"):
                 if check["data"]["repData"]["result"]:
                     captcha_verification = generate_captcha_verification(captcha_token, x, y, secret_key)
                     login = requests.post(
-                        "https://monitoring-eu.epcube.com/api/open/common/login",
+                        f"{BASE_URL}/api/open/common/login",
                         json={"userName": email, "password": password, "captchaVerification": captcha_verification},
                         headers=headers
                     ).json()
@@ -93,11 +108,11 @@ if st.button("Genera Token"):
                     elapsed = time.perf_counter() - start_time
                     token = login.get("data", {}).get("token")
                     if token:
-                        st.success(f"✅ Token generato in {elapsed:.2f}s")
+                        st.success(f"✅ Token generato in {elapsed:.2f}s / Token generated in {elapsed:.2f}s")
                         st.code(token, language="text")
                     else:
-                        st.error(f"❌ Login fallito: {login}")
+                        st.error(f"❌ Login fallito / Login failed: {login}")
                 else:
-                    st.error("❌ CAPTCHA non riuscito.")
+                    st.error("❌ CAPTCHA non riuscito / CAPTCHA failed.")
         except Exception as e:
             st.exception(e)
