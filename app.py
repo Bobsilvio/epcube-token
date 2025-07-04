@@ -36,8 +36,8 @@ if st.button("🔐 Genera Token / Generate Token"):
     else:
         try:
             BASE_URLS = {
-                "EU": "https://monitoring-eu.epcube.com",
-                "US": "https://monitoring-us.epcube.com"
+                "EU": "https://monitoring-eu.epcube.com/api/",
+                "US": "https://epcube-monitoring.com/app-api/"
             }
             BASE_URL = BASE_URLS[region]
 
@@ -68,16 +68,35 @@ if st.button("🔐 Genera Token / Generate Token"):
                     cipher = AES.new(secret_key.encode("utf-8"), AES.MODE_ECB)
                     return base64.b64encode(cipher.encrypt(pad(raw, AES.block_size))).decode("utf-8")
 
-                # CAPTCHA GET
-                r = requests.post(f"{BASE_URL}/api/open/common/captcha/get",
+                #st.write("📡 Richiesta a:", f"{BASE_URL}/open/common/captcha/get")
+                r = requests.post(f"{BASE_URL}/open/common/captcha/get",
                                   json={"clientUid": client_uid}, headers=headers)
-                rep_data = r.json()["data"]["repData"]
-                captcha_token = rep_data["token"]
-                secret_key = rep_data["secretKey"]
+
+                if r.status_code != 200:
+                    st.error(f"❌ Errore HTTP: {r.status_code}")
+                    st.text(r.text)
+                    st.stop()
+
+                try:
+                    r_json = r.json()
+                except Exception as ex:
+                    st.error("❌ La risposta non è un JSON valido.")
+                    st.text(r.text)
+                    st.stop()
+
+                if "data" not in r_json or "repData" not in r_json["data"]:
+                    st.error("❌ Il server non ha restituito repData.")
+                    st.text(json.dumps(r_json, indent=2))
+                    st.stop()
+
+                rep_data = r_json["data"]["repData"]
+
+                # Decodifica immagini CAPTCHA
                 original = decode_base64_image(rep_data["originalImageBase64"])
                 puzzle = decode_base64_image(rep_data["jigsawImageBase64"])
+                secret_key = rep_data["secretKey"]
+                captcha_token = rep_data["token"]
 
-                # Trova posizione pezzo puzzle / Find puzzle position
                 bg_gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
                 piece_gray = cv2.cvtColor(puzzle, cv2.COLOR_BGR2GRAY)
 
@@ -89,10 +108,9 @@ if st.button("🔐 Genera Token / Generate Token"):
                 x = float(max_loc[0])
                 y = 5
 
-                # CAPTCHA CHECK
                 point_json = encrypt_point_json(x, y, secret_key)
                 check = requests.post(
-                    f"{BASE_URL}/api/open/common/captcha/check",
+                    f"{BASE_URL}/open/common/captcha/check",
                     json={"clientUid": client_uid, "token": captcha_token, "pointJson": point_json},
                     headers=headers
                 ).json()
@@ -100,7 +118,7 @@ if st.button("🔐 Genera Token / Generate Token"):
                 if check["data"]["repData"]["result"]:
                     captcha_verification = generate_captcha_verification(captcha_token, x, y, secret_key)
                     login = requests.post(
-                        f"{BASE_URL}/api/open/common/login",
+                        f"{BASE_URL}/open/common/login",
                         json={"userName": email, "password": password, "captchaVerification": captcha_verification},
                         headers=headers
                     ).json()
