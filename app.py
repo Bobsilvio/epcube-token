@@ -26,7 +26,7 @@ Enter the email and password you use to log into the EpCube mobile app.
 If login fails, try again: CAPTCHA may fail on first attempt.
 """)
 
-region = st.selectbox("🌍 Regione / Region", options=["EU", "US"], index=0)
+region = st.selectbox("🌍 Regione / Region", options=["EU", "US", "JP"], index=0)
 email = st.text_input("📧 Email", value="", placeholder="es. nome@email.com")
 password = st.text_input("🔒 Password", type="password", placeholder="Inserisci la password / Enter password")
 
@@ -37,7 +37,8 @@ if st.button("🔐 Genera Token / Generate Token"):
         try:
             BASE_URLS = {
                 "EU": "https://monitoring-eu.epcube.com/api/",
-                "US": "https://epcube-monitoring.com/app-api/"
+                "US": "https://epcube-monitoring.com/app-api/",
+                "JP": "https://monitoring-jp.epcube.com/api/"
             }
             BASE_URL = BASE_URLS[region]
 
